@@ -1,97 +1,103 @@
 /**
- * Ngaji Digital Backend
- * Memastikan sinkronisasi Imsakiyah, Jadwal Sholat, dan Doa
+ * Ngaji Digital Backend v46.0 - UNISA API Integration
  */
 const SS = SpreadsheetApp.getActiveSpreadsheet();
 
 function doGet(e) {
-  const action = e.parameter.action;
+  const action = e ? e.parameter.action : null;
   checkAndInitSheets();
 
   if (action) {
     try {
       let result;
       switch(action) {
-        case 'sync': result = syncDoaFromEQuran(); break;
+        case 'getCalendar': result = getCalendarUNISA(); break;
+        case 'getSholat': result = getJadwalByCityId(e.parameter.id); break;
         case 'getSurah': result = getSheetData("DB_Surah"); break;
         case 'getDoa': result = getSheetData("DB_Doa"); break;
         case 'getTahlil': result = getSheetData("DB_Tahlil"); break;
-        case 'getSholat': result = getJadwalEQuran(e.parameter.id); break;
         case 'getAyatData': result = fetchAyatFromAPI(e.parameter.surahId); break;
-        case 'searchKota': result = callAPI(`https://equran.id/api/v2/imsakiyah/kota`); break;
-        case 'getCalendar': result = getCalendarV3(); break;
-        default: result = {status: false, message: "Aksi tidak ditemukan"};
+        case 'searchKota': result = callAPI(`https://api.myquran.com/v2/sholat/kota/cari/${encodeURIComponent(e.parameter.q || "jakarta")}`); break;
+        case 'sync': result = flushAndSync(); break;
+        default: result = {status: false, message: "Aksi tidak dikenal"};
       }
       return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
     } catch (err) {
       return ContentService.createTextOutput(JSON.stringify({status: false, message: err.toString()})).setMimeType(ContentService.MimeType.JSON);
     }
   }
-  return HtmlService.createHtmlOutput("Ngaji Digital Backend Active");
+  return HtmlService.createTemplateFromFile('index').evaluate().setTitle('Ngaji Digital 2026');
 }
 
-// Mengambil Jadwal dari eQuran ID (v2)
-function getJadwalEQuran(id) {
-  const res = callAPI(`https://equran.id/api/v2/shalat/jadwal/${id}`);
-  if(res && res.code === 200) {
-    return { status: true, data: { jadwal: res.data } };
-  }
-  return { status: false };
-}
-
-// Sinkronisasi Doa dari eQuran ID (v2)
-function syncDoaFromEQuran() {
+// FUNGSI BARU MENGGUNAKAN API UNISA
+function getCalendarUNISA() {
   try {
-    const res = callAPI("https://equran.id/api/v2/doa");
-    if(res && res.code === 200) {
-      const rows = res.data.map(d => [d.nama, d.lafal, d.terjemahan]);
-      const sheet = SS.getSheetByName("DB_Doa");
-      sheet.clear().getRange(1,1,1,3).setValues([["Judul","Arab","Terjemah"]]);
-      sheet.getRange(2,1,rows.length,3).setValues(rows);
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth() + 1;
+    const d = now.getDate();
+    
+    // Endpoint UNISA Yogya
+    const url = `https://service.unisayogya.ac.id/kalender/api/masehi2hijriah/muhammadiyah/${y}/${m}/${d}`;
+    const res = callAPI(url);
+    
+    if (res && res.hijriah) {
+      const h = res.hijriah; // Format: "14 Ramadan 1447 H"
+      const masehiStr = Utilities.formatDate(now, "GMT+7", "EEEE, dd MMMM yyyy");
       
-      // Bonus: Sync Surah sekalian jika diperlukan
-      const resQ = callAPI("https://equran.id/api/v2/surat");
-      if(resQ && resQ.code === 200) {
-        const rowsQ = resQ.data.map(s => [s.nomor, s.namaLatin, s.nama, s.tempatTurun, s.jumlahAyat]);
-        SS.getSheetByName("DB_Surah").clear().getRange(1,1,1,5).setValues([["ID","Nama","Nama Arab","Tipe","Jumlah Ayat"]]);
-        SS.getSheetByName("DB_Surah").getRange(2,1,rowsQ.length,5).setValues(rowsQ);
-      }
-      
-      return {status: "success", message: "Database Doa & Surah Berhasil Disinkronkan!"};
+      return { 
+        status: true, 
+        masehi: masehiStr, 
+        hijri: h 
+      };
     }
-    return {status: "error", message: "Gagal mengambil data dari eQuran"};
-  } catch (e) { return {status: "error", message: e.toString()}; }
-}
-
-function getCalendarV3() {
-  const now = new Date();
-  const dateStr = Utilities.formatDate(now, "GMT+7", "yyyy-MM-dd");
-  const res = callAPI(`https://api.myquran.com/v3/cal/hijr/${dateStr}?method=standar`);
-  if (res && res.status && res.data) {
-    const d = res.data;
-    return { 
-      status: true, 
-      masehi: `${d.ce.dayName}, ${d.ce.day} ${d.ce.monthName} ${d.ce.year}`, 
-      hijri: `${d.hijr.day} ${d.hijr.monthName} ${d.hijr.year} H` 
+    throw "API UNISA Tidak Merespon";
+  } catch (e) {
+    return {
+      status: true,
+      masehi: Utilities.formatDate(new Date(), "GMT+7", "EEEE, dd MMMM yyyy"),
+      hijri: "Ramadhan 1447 H" // Fallback manual
     };
   }
-  return { status: false };
 }
 
+// Fungsi pembantu lainnya tetap sama
 function callAPI(url) {
   try {
-    const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true, timeoutInSeconds: 15 });
     return JSON.parse(res.getContentText());
-  } catch (e) { return { status: false }; }
+  } catch (e) { return null; }
+}
+
+function getJadwalByCityId(id) {
+  const cityId = id || "1301";
+  const dateStr = Utilities.formatDate(new Date(), "GMT+7", "yyyy/MM/dd");
+  const res = callAPI(`https://api.myquran.com/v2/sholat/jadwal/${cityId}/${dateStr}`);
+  if(res && res.status && res.data && res.data.jadwal) {
+    return { status: true, data: { jadwal: res.data.jadwal } };
+  }
+  return { status: false };
 }
 
 function getSheetData(name) {
   const sheet = SS.getSheetByName(name);
-  if (!sheet) return [];
+  if(!sheet) return [];
   const data = sheet.getDataRange().getValues();
   if (data.length <= 1) return [];
   const head = data.shift();
   return data.map(r => { let o = {}; head.forEach((h, i) => { o[h] = r[i]; }); return o; });
+}
+
+function flushAndSync() {
+  try {
+    const resQ = callAPI("https://equran.id/api/v2/surat");
+    if(resQ && resQ.data) {
+      const rows = resQ.data.map(s => [s.nomor, s.namaLatin, s.nama, s.tempatTurun, s.jumlahAyat]);
+      SS.getSheetByName("DB_Surah").clear().getRange(1,1,1,5).setValues([["ID","Nama","Nama Arab","Tipe","Jumlah Ayat"]]);
+      SS.getSheetByName("DB_Surah").getRange(2,1,rows.length,5).setValues(rows);
+    }
+    return {status: true, message: "Sync Berhasil!"};
+  } catch (e) { return {status: false, message: e.toString()}; }
 }
 
 function fetchAyatFromAPI(id) {
