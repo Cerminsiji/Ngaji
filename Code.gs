@@ -1,5 +1,5 @@
 /**
- * Ngaji Digital Backend v46.0 - UNISA API Integration
+ * Ngaji Digital Backend - UNISA API Integration
  */
 const SS = SpreadsheetApp.getActiveSpreadsheet();
 
