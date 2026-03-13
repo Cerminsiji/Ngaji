@@ -1,15 +1,21 @@
 /**
- * NGAJI DIGITAL
+ * NGAJI DIGITAL BACKEND
+ * Penulis: Tim Riset Ngaji Digital
  */
 
 const SS = SpreadsheetApp.getActiveSpreadsheet();
 
 function doGet(e) {
-  const action = e.parameter.action;
+  // Sistem penangkapan parameter yang lebih kuat
+  const params = e.parameter;
+  const action = params.action;
+  
   let result;
 
   try {
-    if (!action) throw new Error("No Action Provided");
+    if (!action) {
+      return createJsonResponse({ status: false, message: "Error: No Action Provided" });
+    }
 
     switch (action) {
       case 'sync':
@@ -25,61 +31,55 @@ function doGet(e) {
         result = getSheetData('Tahlil');
         break;
       case 'getSholat':
-        result = fetchSholatAPI(e.parameter.id);
+        result = fetchSholatAPI(params.id);
         break;
       case 'searchKota':
-        result = searchKotaAPI(e.parameter.q);
-        break;
-      case 'getAyatData':
-        result = fetchAyatAPI(e.parameter.surahId);
+        result = searchKotaAPI(params.q);
         break;
       default:
-        result = { status: false, message: 'Action ' + action + ' tidak terdaftar' };
+        result = { status: false, message: "Action '" + action + "' tidak dikenali" };
     }
   } catch (err) {
-    result = { status: false, message: err.toString() };
+    result = { status: false, message: "Server Error: " + err.toString() };
   }
 
-  return ContentService.createTextOutput(JSON.stringify(result))
+  return createJsonResponse(result);
+}
+
+// Helper untuk format JSON yang konsisten
+function createJsonResponse(data) {
+  return ContentService.createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
 }
 
 function fetchSholatAPI(cityId) {
   const now = new Date();
   const url = `https://api.myquran.com/v2/sholat/jadwal/${cityId}/${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()}`;
-  return JSON.parse(UrlFetchApp.fetch(url));
+  const res = UrlFetchApp.fetch(url);
+  return JSON.parse(res.getContentText());
 }
 
 function searchKotaAPI(query) {
-  return JSON.parse(UrlFetchApp.fetch(`https://api.myquran.com/v2/sholat/kota/cari/${query}`));
-}
-
-function fetchAyatAPI(surahId) {
-  const res = UrlFetchApp.fetch(`https://equran.id/api/v2/surat/${surahId}`);
-  return JSON.parse(res).data;
+  const res = UrlFetchApp.fetch(`https://api.myquran.com/v2/sholat/kota/cari/${query}`);
+  return JSON.parse(res.getContentText());
 }
 
 function syncAllData() {
   // Sync Surah
-  const surahs = JSON.parse(UrlFetchApp.fetch('https://equran.id/api/v2/surat')).data;
+  const resSurah = UrlFetchApp.fetch('https://equran.id/api/v2/surat');
+  const surahs = JSON.parse(resSurah.getContentText()).data;
   const sSheet = getOrCreateSheet('Surah');
   sSheet.clear().appendRow(['ID', 'Nama', 'Nama Arab', 'Jumlah Ayat', 'Tipe']);
   surahs.forEach(s => sSheet.appendRow([s.nomor, s.namaLatin, s.nama, s.jumlahAyat, s.tempatTurun]));
 
-  // Placeholder Doa & Tahlil
-  const dSheet = getOrCreateSheet('Doa');
-  if(dSheet.getLastRow() < 2) {
-    dSheet.appendRow(['Judul', 'Arab', 'Terjemah']);
-    dSheet.appendRow(['Doa Sapu Jagad', 'رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ', 'Ya Tuhan kami, berilah kami kebaikan di dunia...']);
-  }
-  
-  return { status: true, message: 'Sinkronisasi v30.0 Berhasil!' };
+  return { status: true, message: 'Sinkronisasi v30.5 Berhasil!' };
 }
 
 function getSheetData(name) {
   const sheet = SS.getSheetByName(name);
   if (!sheet) return [];
   const values = sheet.getDataRange().getValues();
+  if (values.length < 2) return [];
   const header = values.shift();
   return values.map(row => {
     let obj = {};
