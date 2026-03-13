@@ -3,26 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Ngaji Digital 2026</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Amiri&family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
   <style>
     :root { --quran-size: 2.2rem; }
-    body { font-family: 'Plus Jakarta Sans', sans-serif; background: #011a14; color: #f0fdf4; margin:0; overflow-x: hidden; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background: #011a14; color: #f0fdf4; margin:0; }
     .font-quran { font-family: 'Amiri', serif; font-size: var(--quran-size); direction: rtl; line-height: 2.2; }
     .glass { background: rgba(6, 78, 59, 0.4); backdrop-filter: blur(15px); border: 1px solid rgba(16, 185, 129, 0.1); }
     .btn-active:active { transform: scale(0.95); transition: 0.1s; }
     .calendar-glow { text-shadow: 0 0 15px rgba(52, 211, 153, 0.4); }
     .card-gradient { background: linear-gradient(135deg, #064e3b 0%, #022c22 100%); }
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-thumb { background: rgba(16, 185, 129, 0.3); border-radius: 10px; }
   </style>
 </head>
 <body class="pb-32">
 
   <header class="p-6 sticky top-0 z-50 glass flex justify-between items-center border-b border-white/5">
     <div>
-      <h1 class="text-xl font-black text-emerald-400 leading-none tracking-tighter">Ngaji Digital</h1>
+      <h1 class="text-xl font-black text-emerald-400 leading-none">Ngaji Digital</h1>
       <p id="cityLabel" class="text-[9px] font-bold opacity-40 uppercase tracking-widest mt-1 italic">Menghubungkan...</p>
     </div>
     <button onclick="toggleModal('cityModal')" class="bg-emerald-500 text-black px-4 py-2 rounded-xl text-[9px] font-black uppercase btn-active shadow-lg shadow-emerald-500/20">Ganti Kota</button>
@@ -50,14 +47,14 @@
   </nav>
 
   <script>
-    // GANTI DENGAN URL WEB APP ANDA
+    // MASUKKAN URL BACKEND ANDA DI SINI
     const API = "https://script.google.com/macros/s/AKfycbwQnpc4W4tWJGff65X0aj11yfnJ7eXQCac590phW-aH_DSLZmLW3hS_347pixqWAmJD/exec";
 
     function toggleModal(id) { document.getElementById(id).classList.toggle('hidden'); }
 
     function renderHome() {
       const city = localStorage.getItem('m_city_name') || "JAKARTA";
-      const cid = localStorage.getItem('m_city_id') || 1301;
+      const cid = localStorage.getItem('m_city_id') || "1301"; // ID Kota Default
       
       document.getElementById('appContent').innerHTML = `
         <div class="p-8 rounded-[3rem] card-gradient shadow-2xl relative overflow-hidden border border-white/5">
@@ -80,8 +77,8 @@
           </div>
         </div>
         <div class="grid grid-cols-2 gap-4">
-          <div onclick="loadQuran()" class="glass p-8 rounded-[2.5rem] text-center btn-active cursor-pointer border-emerald-500/5"><span class="text-3xl text-emerald-400">📖</span><p class="text-[9px] font-black mt-3 uppercase opacity-50 tracking-tighter">Al-Quran</p></div>
-          <div onclick="fullSync()" id="syncBtn" class="glass p-8 rounded-[2.5rem] text-center border-emerald-500/5 btn-active cursor-pointer"><span class="text-3xl text-emerald-400">🔄</span><p class="text-[9px] font-black mt-3 uppercase opacity-50 tracking-tighter">Sync Data</p></div>
+          <div onclick="loadQuran()" class="glass p-8 rounded-[2.5rem] text-center btn-active cursor-pointer"><span class="text-3xl">📖</span><p class="text-[9px] font-black mt-3 uppercase opacity-50 tracking-tighter">Al-Quran</p></div>
+          <div onclick="fullSync()" id="syncBtn" class="glass p-8 rounded-[2.5rem] text-center btn-active cursor-pointer"><span class="text-3xl">🔄</span><p class="text-[9px] font-black mt-3 uppercase opacity-50 tracking-tighter">Sync Data</p></div>
         </div>
       `;
       updateClock(); fetchDataHome(cid, city);
@@ -111,39 +108,33 @@
 
         if(resSholat.status && resSholat.data && resSholat.data.jadwal) {
           const j = resSholat.data.jadwal;
-          // Pemetaan manual untuk memastikan kecocokan ID elemen
+          // Pemetaan Key Kapital untuk eQuran ID API
           const mapping = {
-            'val-imsak': j.imsak,
-            'val-subuh': j.subuh,
-            'val-dzuhur': j.dzuhur,
-            'val-ashar': j.ashar,
-            'val-maghrib': j.maghrib,
-            'val-isya': j.isya
+            'val-imsak': j.Imsak, 'val-subuh': j.Subuh, 'val-dzuhur': j.Dzuhur,
+            'val-ashar': j.Ashar, 'val-maghrib': j.Maghrib, 'val-isya': j.Isya
           };
-          
           for (const [idEl, waktu] of Object.entries(mapping)) {
             const el = document.getElementById(idEl);
             if(el) el.innerText = waktu || "--:--";
           }
         }
-      } catch(e) { console.error("Gagal memuat data home:", e); }
+      } catch(e) { console.error(e); }
     }
 
     async function searchCity() {
-      const q = document.getElementById('cityInput').value;
+      const q = document.getElementById('cityInput').value.toUpperCase();
       if(!q) return;
-      document.getElementById('cityResult').innerHTML = '<p class="text-center py-10 font-black opacity-20 uppercase animate-pulse">Mencari...</p>';
+      document.getElementById('cityResult').innerHTML = '<p class="text-center py-10 font-black opacity-20">Mencari...</p>';
       try {
-        const res = await fetch(`${API}?action=searchKota&q=${q}`);
+        const res = await fetch(`${API}?action=searchKota`);
         const d = await res.json();
-        if(d.status && d.data) {
-          document.getElementById('cityResult').innerHTML = d.data.map(c => `
-            <div onclick="setCity('${c.id}', '${c.lokasi}')" class="p-5 glass rounded-2xl font-black text-sm cursor-pointer hover:bg-emerald-500 hover:text-black transition-all uppercase tracking-tighter italic">📍 ${c.lokasi}</div>
+        if(d.code === 200) {
+          const filtered = d.data.filter(c => c.nama.includes(q));
+          document.getElementById('cityResult').innerHTML = filtered.map(c => `
+            <div onclick="setCity('${c.id}', '${c.nama}')" class="p-5 glass rounded-2xl font-black text-sm cursor-pointer hover:bg-emerald-500 hover:text-black transition-all uppercase tracking-tighter italic">📍 ${c.nama}</div>
           `).join('');
-        } else {
-          document.getElementById('cityResult').innerHTML = '<p class="text-center py-10 opacity-30 font-bold uppercase">Kota tidak ditemukan</p>';
         }
-      } catch(e) { alert("Error koneksi API"); }
+      } catch(e) { alert("Error API Kota"); }
     }
 
     function setCity(id, name) {
@@ -154,79 +145,44 @@
     }
 
     async function fullSync() {
-      const btn = document.getElementById('syncBtn');
-      btn.classList.add('animate-pulse');
+      const btn = document.getElementById('syncBtn'); btn.classList.add('animate-pulse');
       try {
         const res = await fetch(`${API}?action=sync`);
-        const d = await res.json();
-        alert(d.message);
-      } catch(e) { alert("Sinkronisasi Gagal!"); }
-      btn.classList.remove('animate-pulse');
-      renderHome();
+        const d = await res.json(); alert(d.message);
+      } catch(e) { alert("Sync Gagal!"); }
+      btn.classList.remove('animate-pulse'); renderHome();
     }
 
     async function loadQuran() {
       const content = document.getElementById('appContent');
-      content.innerHTML = '<div class="py-20 text-center animate-pulse uppercase font-black text-emerald-400">Membuka Mushaf Digital...</div>';
-      try {
-        const res = await fetch(`${API}?action=getSurah`);
-        const data = await res.json();
-        content.innerHTML = `<div class="space-y-3">` + data.map(s => `
-          <div onclick="openSurah(${s.ID}, '${s.Nama}')" class="glass p-5 rounded-3xl flex justify-between items-center cursor-pointer btn-active border-white/5">
-            <div class="flex items-center gap-5">
-              <span class="w-10 h-10 bg-emerald-500 text-black flex items-center justify-center rounded-2xl font-black text-xs shadow-lg shadow-emerald-500/20">${s.ID}</span>
-              <p class="font-black text-sm uppercase tracking-tight">${s.Nama}</p>
-            </div>
-            <span class="font-quran text-xl text-emerald-400/30">${s["Nama Arab"]}</span>
-          </div>`).join('') + `</div>`;
-      } catch(e) { content.innerHTML = '<p class="text-center py-10">Gagal memuat Quran</p>'; }
+      content.innerHTML = '<div class="py-20 text-center animate-pulse uppercase font-black text-emerald-400">Membuka Mushaf...</div>';
+      const res = await fetch(`${API}?action=getSurah`);
+      const data = await res.json();
+      content.innerHTML = `<div class="space-y-3">` + data.map(s => `<div onclick="openSurah(${s.ID}, '${s.Nama}')" class="glass p-5 rounded-3xl flex justify-between items-center cursor-pointer btn-active"><div class="flex items-center gap-5"><span class="w-10 h-10 bg-emerald-500 text-black flex items-center justify-center rounded-2xl font-black text-xs">${s.ID}</span><p class="font-black text-sm uppercase">${s.Nama}</p></div><span class="font-quran text-xl text-emerald-400/30">${s["Nama Arab"]}</span></div>`).join('') + `</div>`;
     }
 
     async function openSurah(id, name) {
       const content = document.getElementById('appContent');
-      content.innerHTML = '<div class="py-20 text-center animate-pulse uppercase font-black text-emerald-400">Memuat Ayat...</div>';
-      try {
-        const res = await fetch(`${API}?action=getAyatData&surahId=${id}`);
-        const d = await res.json();
-        content.innerHTML = `
-          <div class="glass p-10 rounded-[3rem] mb-6 text-center border-emerald-500/10 shadow-2xl">
-            <h2 class="text-4xl font-black text-emerald-400 uppercase tracking-tighter italic">${name}</h2>
-            <p class="text-[10px] opacity-40 mt-2 uppercase font-bold tracking-[0.3em]">Murottal Audio v2</p>
-          </div>
-          <div class="space-y-6">` + d.ayat.map(a => `
-          <div class="glass p-10 rounded-[3rem] border border-white/5 relative">
-            <span class="absolute top-8 left-8 w-8 h-8 bg-white/5 rounded-full flex items-center justify-center text-[9px] font-black opacity-30 italic font-sans">${a.nomorAyat}</span>
-            <div class="font-quran text-right mb-8 text-emerald-50 leading-relaxed">${a.teksArab}</div>
-            <p class="text-[14px] opacity-60 italic leading-relaxed border-l-2 border-emerald-500/40 pl-6">${a.teksIndonesia}</p>
-          </div>`).join('') + `</div>`;
-        window.scrollTo(0,0);
-      } catch(e) { alert("Gagal memuat ayat"); }
+      content.innerHTML = '<div class="py-20 text-center animate-pulse uppercase font-black">Memuat Ayat...</div>';
+      const res = await fetch(`${API}?action=getAyatData&surahId=${id}`);
+      const d = await res.json();
+      content.innerHTML = `<div class="glass p-10 rounded-[3rem] mb-6 text-center border-emerald-500/10 shadow-2xl"><h2 class="text-4xl font-black text-emerald-400 uppercase tracking-tighter italic">${name}</h2></div><div class="space-y-6">` + d.ayat.map(a => `<div class="glass p-10 rounded-[3rem] border border-white/5 relative"><span class="absolute top-8 left-8 w-8 h-8 bg-white/5 rounded-full flex items-center justify-center text-[9px] font-black opacity-30 italic font-sans">${a.nomorAyat}</span><div class="font-quran text-right mb-8 text-emerald-50 leading-relaxed">${a.teksArab}</div><p class="text-[14px] opacity-60 italic border-l-2 border-emerald-500/40 pl-6">${a.teksIndonesia}</p></div>`).join('') + `</div>`;
+      window.scrollTo(0,0);
     }
 
     async function loadDoa() {
       const content = document.getElementById('appContent');
-      content.innerHTML = '<p class="text-center py-20 font-black opacity-20 uppercase italic">Memanggil Doa Harian...</p>';
+      content.innerHTML = '<p class="text-center py-20 font-black opacity-20 uppercase italic">Memuat Doa eQuran ID...</p>';
       const res = await fetch(`${API}?action=getDoa`);
       const data = await res.json();
-      content.innerHTML = data.map(d => `
-        <div class="glass p-10 rounded-[3rem] mb-6 border-white/5">
-          <h4 class="text-[11px] font-black text-emerald-400 mb-8 uppercase tracking-tighter italic border-b border-white/5 pb-4">${d.Judul}</h4>
-          <div class="font-quran text-right mb-8 text-emerald-50 leading-relaxed">${d.Arab}</div>
-          <p class="text-xs opacity-50 italic leading-relaxed pt-6 border-t border-white/5 font-sans">${d.Terjemah}</p>
-        </div>`).join('');
+      content.innerHTML = data.map(d => `<div class="glass p-10 rounded-[3rem] mb-6 border-white/5"><h4 class="text-[11px] font-black text-emerald-400 mb-8 uppercase tracking-tighter italic border-b border-white/5 pb-4">${d.Judul}</h4><div class="font-quran text-right mb-8 text-emerald-50 leading-relaxed">${d.Arab}</div><p class="text-xs opacity-50 italic pt-6 border-t border-white/5 font-sans">${d.Terjemah}</p></div>`).join('');
     }
 
     async function loadTahlil() {
       const content = document.getElementById('appContent');
-      content.innerHTML = '<p class="text-center py-20 font-black opacity-20 uppercase italic">Menyusun Majelis Tahlil...</p>';
       const res = await fetch(`${API}?action=getTahlil`);
       const data = await res.json();
-      content.innerHTML = data.map(t => `
-        <div class="glass p-10 rounded-[3rem] mb-6 border-white/5">
-          <h4 class="text-[11px] font-black text-emerald-400 mb-8 uppercase tracking-tighter italic">${t.Judul}</h4>
-          <div class="font-quran text-right mb-8 text-emerald-50 leading-relaxed">${t.Arab}</div>
-          <p class="text-xs opacity-50 italic leading-relaxed pt-6 border-t border-white/5 font-sans">${t.Terjemah}</p>
-        </div>`).join('');
+      content.innerHTML = data.map(t => `<div class="glass p-10 rounded-[3rem] mb-6"><h4 class="text-[11px] font-black text-emerald-400 mb-8 uppercase italic">${t.Judul}</h4><div class="font-quran text-right mb-8 text-emerald-50 leading-relaxed">${t.Arab}</div><p class="text-xs opacity-50 italic pt-6 border-t border-white/5 font-sans">${t.Terjemah}</p></div>`).join('');
     }
 
     window.onload = renderHome;
