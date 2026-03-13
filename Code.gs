@@ -1,5 +1,5 @@
 /**
- * Ngaji Digital Backend - Support API v3
+ * Ngaji Digital Backend
  */
 const SS = SpreadsheetApp.getActiveSpreadsheet();
 
@@ -34,7 +34,6 @@ function doGet(e) {
 function getCalendarV3() {
   const now = new Date();
   const dateStr = Utilities.formatDate(now, "GMT+7", "yyyy-MM-dd");
-  // API v3 menggunakan format /v3/cal/hijr/YYYY-MM-DD
   const res = callAPI(`https://api.myquran.com/v3/cal/hijr/${dateStr}?method=standar`);
   
   if (res && res.status && res.data) {
@@ -45,29 +44,20 @@ function getCalendarV3() {
       hijri: `${d.hijr.day} ${d.hijr.monthName} ${d.hijr.year} H`
     };
   }
-  return { status: false, message: "Gagal mengambil data kalender v3" };
+  return { status: false };
 }
 
 function getJadwalV3(id) {
-  const dateStr = Utilities.formatDate(new Date(), "GMT+7", "yyyy-MM-dd");
+  const now = new Date();
+  const dateStr = Utilities.formatDate(now, "GMT+7", "yyyy-MM-dd");
   const res = callAPI(`https://api.myquran.com/v3/sholat/jadwal/${id}/${dateStr}`);
   
   if(res && res.status && res.data && res.data.jadwal) {
-    // API v3 mengembalikan key tanggal di dalam objek jadwal
-    const dateKey = Object.keys(res.data.jadwal)[0];
-    return { status: true, data: { jadwal: res.data.jadwal[dateKey] } };
+    return { status: true, data: { jadwal: res.data.jadwal } };
   }
   return { status: false };
 }
 
-function callAPI(url) {
-  try {
-    const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
-    return JSON.parse(res.getContentText());
-  } catch (e) { return { status: false }; }
-}
-
-// Fungsi lainnya (getSheetData, flushAndSync, dll) tetap menggunakan logika database Anda sebelumnya
 function getSheetData(name) {
   const sheet = SS.getSheetByName(name);
   if (!sheet) return [];
@@ -79,8 +69,32 @@ function getSheetData(name) {
   });
 }
 
+function flushAndSync() {
+  try {
+    const resQ = callAPI("https://equran.id/api/v2/surat");
+    if(resQ && resQ.data) {
+      const rows = resQ.data.map(s => [s.nomor, s.namaLatin, s.nama, s.tempatTurun, s.jumlahAyat]);
+      SS.getSheetByName("DB_Surah").clear().getRange(1,1,1,5).setValues([["ID","Nama","Nama Arab","Tipe","Jumlah Ayat"]]);
+      SS.getSheetByName("DB_Surah").getRange(2,1,rows.length,5).setValues(rows);
+    }
+    const resD = callAPI("https://api.myquran.com/v3/doa/semua");
+    if(resD && resD.status && resD.data) {
+      const rows = resD.data.map(d => [d.judul, d.arab, d.indo]);
+      SS.getSheetByName("DB_Doa").clear().getRange(1,1,1,3).setValues([["Judul","Arab","Terjemah"]]);
+      SS.getSheetByName("DB_Doa").getRange(2,1,rows.length,3).setValues(rows);
+    }
+    return {status: "success", message: "Sinkronisasi Berhasil!"};
+  } catch (e) { return {status: "error", message: e.toString()}; }
+}
+
+function callAPI(url) {
+  try {
+    const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    return JSON.parse(res.getContentText());
+  } catch (e) { return { status: false }; }
+}
+
 function fetchAyatFromAPI(id) {
-  // eQuran ID masih di v2
   const res = callAPI(`https://equran.id/api/v2/surat/${id}`);
   return res ? res.data : null;
 }
