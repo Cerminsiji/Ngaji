@@ -30,37 +30,43 @@ function doGet(e) {
   }
 }
 
-// FIX UTAMA: Kalender Hijriah Muhammadiyah via UNISA API
 function getCalendarData() { 
   try { 
     const now = new Date(); 
-    const url = `https://service.unisayogya.ac.id/kalender/api/masehi2hijriah/muhammadiyah/${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()}`; 
-    const res = callAPI(url); 
-    const masehiStr = Utilities.formatDate(now, "GMT+7", "EEEE, d MMMM yyyy");
     
-    let hijriStr = "25 RAMADHAN 1447 H"; // Default Fallback 2026
-    if (res && res.hijriah) {
-      // 1. Buang bagian masehi jika API mengirim format "Masehi / Hijriah"
-      let cleanHijri = res.hijriah.includes('/') ? res.hijriah.split('/')[1].trim() : res.hijriah;
+    // Array Nama Hari dan Bulan Indonesia
+    const daysIndo = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+    const monthsIndo = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    
+    // Format Masehi Bahasa Indonesia
+    const masehiStr = `${daysIndo[now.getDay()]}, ${now.getDate()} ${monthsIndo[now.getMonth()]} ${now.getFullYear()}`;
+    
+    // Menggunakan API Aladhan sesuai permintaan
+    const url = `https://api.aladhan.com/v1/gToH/${now.getDate()}-${now.getMonth()+1}-${now.getFullYear()}`;
+    const response = UrlFetchApp.fetch(url, { "muteHttpExceptions": true });
+    const res = JSON.parse(response.getContentText());
+    
+    let hijriStr = "25 RAMADHAN 1447 H"; // Fallback jika API bermasalah
+
+    if (res && res.data && res.data.hijri) {
+      const h = res.data.hijri;
+      // Pemetaan nama bulan Aladhan ke format Indonesia yang umum
+      const bulanH = {
+        "Ramadān": "RAMADHAN", "Shawwāl": "SYAWAL", "Dhū al-Qi'dah": "DZULQA'DAH",
+        "Dhū al-Ḥijjah": "DZULHIJJAH", "Muḥarram": "MUHARRAM", "Ṣafar": "SAFAR"
+      };
+      const namaBulanH = bulanH[h.month.en] || h.month.en.toUpperCase();
       
-      // 2. Rapikan urutan jika formatnya "Bulan Tanggal, Tahun" menjadi "Tanggal Bulan Tahun"
-      const parts = cleanHijri.replace(',', '').split(" ");
-      if(parts.length >= 3) {
-        // Jika elemen pertama bukan angka (berarti Nama Bulan), tukar posisi dengan elemen kedua
-        if (isNaN(parts[0])) {
-          hijriStr = `${parts[1]} ${parts[0]} ${parts[2]}`;
-        } else {
-          hijriStr = cleanHijri;
-        }
-      } else {
-        hijriStr = cleanHijri;
-      }
+      // Format: Tanggal Bulan Tahun (Contoh: 25 RAMADHAN 1447 H)
+      hijriStr = `${h.day} ${namaBulanH} ${h.year} H`;
     }
-    return { status: true, masehi: masehiStr, hijri: hijriStr.toUpperCase() }; 
+    
+    return { status: true, masehi: masehiStr, hijri: hijriStr }; 
   } catch (e) { 
-    return { status: true, masehi: "Minggu, 15 Maret 2026", hijri: "25 RAMADHAN 1447 H" }; 
+    return { status: true, masehi: "Senin, 16 Maret 2026", hijri: "25 RAMADHAN 1447 H" }; 
   } 
 }
+
 
 // Integrasi GPS dengan API MyQuran
 function getCityByCoords(lat, lng) {
