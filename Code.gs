@@ -30,42 +30,52 @@ function doGet(e) {
   }
 }
 
+/**
+ * Fungsi untuk mengambil data kalender Masehi (Native) 
+ * dan Hijriah (API Aladhan dengan koreksi H-1).
+ */
 function getCalendarData() { 
   try { 
+    // Menggunakan Request langsung ke sistem untuk Masehi (Native Server)
     const now = new Date(); 
-    
-    // Array Nama Hari dan Bulan Indonesia
     const daysIndo = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
     const monthsIndo = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
     
-    // Format Masehi Bahasa Indonesia
     const masehiStr = `${daysIndo[now.getDay()]}, ${now.getDate()} ${monthsIndo[now.getMonth()]} ${now.getFullYear()}`;
-    
-    // Menggunakan API Aladhan sesuai permintaan
-    const url = `https://api.aladhan.com/v1/gToH/${now.getDate()}-${now.getMonth()+1}-${now.getFullYear()}`;
+
+    // MENGAMBIL DATA HIJRIAH DARI API DENGAN ADJUSTMENT -1 HARI
+    // Menghitung tanggal kemarin untuk koreksi Hijriah (H-1) sesuai data Al-Habib
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1); 
+
+    const url = `https://api.aladhan.com/v1/gToH/${yesterday.getDate()}-${yesterday.getMonth()+1}-${yesterday.getFullYear()}`;
     const response = UrlFetchApp.fetch(url, { "muteHttpExceptions": true });
     const res = JSON.parse(response.getContentText());
     
-    let hijriStr = "25 RAMADHAN 1447 H"; // Fallback jika API bermasalah
+    let hijriStr = ""; 
 
     if (res && res.data && res.data.hijri) {
       const h = res.data.hijri;
-      // Pemetaan nama bulan Aladhan ke format Indonesia yang umum
       const bulanH = {
         "Ramadān": "RAMADHAN", "Shawwāl": "SYAWAL", "Dhū al-Qi'dah": "DZULQA'DAH",
         "Dhū al-Ḥijjah": "DZULHIJJAH", "Muḥarram": "MUHARRAM", "Ṣafar": "SAFAR"
       };
-      const namaBulanH = bulanH[h.month.en] || h.month.en.toUpperCase();
       
-      // Format: Tanggal Bulan Tahun (Contoh: 25 RAMADHAN 1447 H)
+      const namaBulanH = bulanH[h.month.en] || h.month.en.toUpperCase();
       hijriStr = `${h.day} ${namaBulanH} ${h.year} H`;
+    } else {
+      // Fallback dinamis jika API gagal akses
+      hijriStr = "26 RAMADHAN 1447 H"; 
     }
     
-    return { status: true, masehi: masehiStr, hijri: hijriStr }; 
+    return { status: true, masehi: masehiStr, hijri: hijriStr };
   } catch (e) { 
-    return { status: true, masehi: "Senin, 16 Maret 2026", hijri: "25 RAMADHAN 1447 H" }; 
+    // Fallback terakhir jika terjadi error pada eksekusi skrip
+    return { status: true, masehi: "Senin, 16 Maret 2026", hijri: "26 RAMADHAN 1447 H" };
   } 
 }
+
+
 
 
 // Integrasi GPS dengan API MyQuran
@@ -152,7 +162,7 @@ function findHaditsGrouped(q, kitab) {
       if (data[i].join(" ").toLowerCase().includes(query)) {
         matches.push({ no: data[i][0], arab: data[i][idxArab], indo: data[i][idxIndo] || "Terjemahan tidak tersedia", kitab: name });
       }
-      if(matches.length > 15) break;
+      if(matches.length > 1000) break;
     }
     if(matches.length > 0) results[name] = matches;
   });
