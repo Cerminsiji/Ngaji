@@ -49,8 +49,7 @@
   </nav>
 
   <script>
-    //Ganti dengan URL_WEB_APP_SCRIP
-    const API = window.location.href.includes('exec') ? window.location.href.split('?')[0] : "https://script.google.com/macros/s/AKfycbzjw9ZazE1AcFh79jDdpGfUtHJ5DPCNSIfvdLZHZFLYcKm8doXAFZJmpYP_06FkC9o8ug/exec"; //Ganti dengan URL_WEB_APP_SCRIP
+    const API = window.location.href.includes('exec') ? window.location.href.split('?')[0] :"https://script.google.com/macros/s/AKfycbwQnpc4W4tWJGff65X0aj11yfnJ7eXQCac590phW-aH_DSLZmLW3hS_347pixqWAmJD/exec"; //Ganti dengan URL_WEB_APP_SCRIP
     let monthlyData = [];
     let currentCityName = "";
     let haditsGroups = {};
@@ -99,16 +98,52 @@
     }
 
     function showMonthlyTable() {
-      const now = new Date();
-      const bulan = now.toLocaleString('id-ID', { month: 'long' });
-      document.getElementById('monthlyTitle').innerText = `Jadwal Sholat ${currentCityName} - ${bulan} ${now.getFullYear()}`;
-      let html = `<table class="w-full text-center border-collapse"><thead class="bg-emerald-500/20 font-black italic"><tr><td class="p-3">Tgl</td><td>Subuh</td><td>Dzuhur</td><td>Ashar</td><td>Maghrib</td><td>Isya</td></tr></thead><tbody>`;
-      monthlyData.forEach(j => {
-        html += `<tr class="border-b border-white/5"><td class="p-3 font-bold">${j.tanggal.split(',')[1]}</td><td>${j.subuh}</td><td>${j.dzuhur}</td><td>${j.ashar}</td><td class="text-emerald-400 font-bold">${j.maghrib}</td><td>${j.isya}</td></tr>`;
-      });
-      document.getElementById('monthlyTable').innerHTML = html + `</tbody></table>`;
-      toggleModal('monthlyModal');
-    }
+  if(!monthlyData) return alert("Data sedang disinkronkan...");
+  
+  const now = new Date();
+  const today = now.getDate(); // Ambil tanggal hari ini (angka)
+  const bulan = now.toLocaleString('id-ID', { month: 'long' });
+  
+  document.getElementById('monthlyTitle').innerText = `Jadwal Sholat ${currentCityName} - ${bulan} ${now.getFullYear()}`;
+  
+  let html = `
+    <table class="w-full text-center border-collapse">
+      <thead class="bg-emerald-500/20 font-black italic">
+        <tr>
+          <td class="p-3">Tgl</td>
+          <td>Subuh</td>
+          <td>Dzuhur</td>
+          <td>Ashar</td>
+          <td>Maghrib</td>
+          <td>Isya</td>
+        </tr>
+      </thead>
+      <tbody>`;
+
+  monthlyData.forEach(j => {
+    // Ambil angka tanggal dari data (misal dari "Senin, 16" diambil 16)
+    const tglUrut = parseInt(j.tanggal.split(',')[1]);
+    
+    // Logika Highlight: Jika tanggal sama dengan hari ini, berikan kelas khusus
+    const isToday = (tglUrut === today);
+    const rowClass = isToday ? 'bg-emerald-500/30 border-l-4 border-emerald-500' : 'border-b border-white/5';
+    const textClass = isToday ? 'text-emerald-300 font-black' : '';
+
+    html += `
+      <tr class="${rowClass} ${textClass}">
+        <td class="p-3 font-bold">${j.tanggal.split(',')[1]}</td>
+        <td>${j.subuh}</td>
+        <td>${j.dzuhur}</td>
+        <td>${j.ashar}</td>
+        <td class="${isToday ? 'text-emerald-400' : 'text-emerald-400 font-bold'}">${j.maghrib}</td>
+        <td>${j.isya}</td>
+      </tr>`;
+  });
+
+  document.getElementById('monthlyTable').innerHTML = html + `</tbody></table>`;
+  toggleModal('monthlyModal');
+}
+
 
     // --- AL-QURAN & NAVIGASI ---
     async function loadQuran() {
