@@ -12,6 +12,8 @@
 ## 🔗 Live Preview
 Nikmati pengalaman ibadah digital di sini:  
 👉 [https://cerminsiji.github.io/Ngaji-Digital/](https://cerminsiji.github.io/Ngaji-Digital/)
+[![Blogger](https://img.shields.io/badge/Blogger-Ngaji%20Digital-orange?logo=blogger&logoColor=white)](https://sukslan.blogspot.com/p/ngaji-digital.html)
+
 
 ---
 
