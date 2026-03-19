@@ -101,7 +101,7 @@ Proyek ini terus dikembangkan untuk memberikan pengalaman ibadah digital yang pa
 
 - [x] **Phase 1**: Sinkronisasi Jam Digital Tanpa Jeda (*Instant Clock Engine*).  
 - [x] **Phase 2**: Navigasi Dinamis Nama Surah (Labeling otomatis pada tombol navigasi).  
-- [x] **Phase 3**: Koreksi Otomatis H-1 Hijriah via API Aladhan (Presisi Ramadhan).  
+- [x] **Phase 3**: Koreksi Otomatis Kalender Hijriah via API Aladhan (Presisi Ramadhan).  
 - [ ] **Phase 4**: Implementasi PWA (*Progressive Web App*) agar aplikasi dapat diinstal di Android/iOS.  
 - [ ] **Phase 5**: Fitur Audio Murottal per ayat dengan integrasi pemutar audio yang ringan.  
 - [ ] **Phase 6**: Sistem Bookmark lokal menggunakan `localStorage` untuk menandai bacaan terakhir.  
