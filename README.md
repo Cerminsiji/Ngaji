@@ -144,6 +144,11 @@ Proyek ini dilindungi di bawah **MIT License**.
 Artinya, Anda bebas menggunakan, menyalin, memodifikasi, dan mendistribusikan kode ini untuk tujuan komersial maupun non-komersial, selama Anda tetap menyertakan atribusi penulis asli.  
 
 > **Disclaimer**: Konten agama (Al-Quran, Hadits, Doa) dalam aplikasi ini bersumber dari API publik. Pengguna disarankan untuk tetap merujuk pada Mushaf cetak atau bimbingan Guru/Ulama untuk pemahaman yang lebih mendalam.  
+---
+
+## Cek Aplikasi Lainnya
+**[Al-Quran Digital](https://github.com/Cerminsiji/Quran-Digital)**
+>Al-Quran Digital adalah platform Mushaf modern berbasis web yang menggabungkan efisiensi Google Apps Script sebagai engine database (Google Sheets) dan GitHub Pages sebagai hosting frontend yang ringan. Dirancang untuk pengalaman membaca yang khusyuk, responsif, dan elegan.
 
 ---
 
