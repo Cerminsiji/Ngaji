@@ -84,7 +84,7 @@ async function renderHome() {
   // Ini mengambil waktu lokal dari device, jadi tidak perlu internet/API
   startClock();
 
-  // 3. Panggil data kalender (H-1 Hijriah) dan Jadwal Sholat di latar belakang
+  // 3. Panggil data kalender (Hijriah) dan Jadwal Sholat di latar belakang
   try {
     const [cal, sho] = await Promise.all([
       fetch(`${API}?action=getCalendar`).then(r=>r.json()),
@@ -100,7 +100,7 @@ async function renderHome() {
     // Update grid jadwal sholat setelah data diterima
     if(sho.status) {
       monthlyData = sho.data.jadwal;
-      const d = monthlyData[new Date().getDate()-1];
+      const d = monthlyData[new Date().getDate()];//Kalender Hijriyah
       document.getElementById('sholatGrid').innerHTML = ['Imsak','Subuh','Dzuhur','Ashar','Maghrib','Isya'].map(t => `
         <div class="bg-black/40 p-3 rounded-2xl border border-white/5">
           <p class="text-[7px] font-bold opacity-40 uppercase mb-1">${t}</p>
