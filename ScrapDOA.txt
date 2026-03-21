@@ -1,0 +1,87 @@
+/**
+ *  SCRAP DOA GITHUB
+ */
+
+function scrapDoaFromGithub() {
+  const CONFIG = {
+    URL: "https://raw.githubusercontent.com/miftahafina/doa-api/refs/heads/master/doa_list.py",
+    SHEET_NAME: "DB_DOA"
+  };
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(CONFIG.SHEET_NAME) || ss.insertSheet(CONFIG.SHEET_NAME);
+  
+  // Inisialisasi Header
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(["Judul", "Arab", "Terjemah"]);
+    sheet.setFrozenRows(1);
+    sheet.getRange("A1:C1").setFontWeight("bold").setBackground("#e2efda");
+  }
+
+  try {
+    const response = UrlFetchApp.fetch(CONFIG.URL);
+    const rawContent = response.getContentText();
+    
+    /**
+     * REGEX UPDATE: 
+     * \s* digunakan untuk menangani spasi/tab yang tidak menentu.
+     * ["'](.*?)["'] digunakan untuk menangkap isi di dalam kutip.
+     */
+    const regex = /["']nama["']\s*:\s*["'](.*?)["'],\s*["']lafal["']\s*:\s*["'](.*?)["'],[\s\S]*?["']arti["']\s*:\s*["'](.*?)["']/g;
+    
+    let match;
+    let dataToInsert = [];
+    
+    while ((match = regex.exec(rawContent)) !== null) {
+      let judul = match[1].trim();
+      let arab = match[2].trim();
+      let terjemah = match[3].trim();
+      
+      // Bersihkan string
+      judul = cleanString(judul);
+      arab = cleanString(arab);
+      terjemah = cleanString(terjemah);
+
+      if (judul && arab) {
+        dataToInsert.push([judul, arab, terjemah]);
+      }
+    }
+
+    if (dataToInsert.length > 0) {
+      // Hapus data lama sebelum update
+      if (sheet.getLastRow() > 1) {
+        sheet.getRange(2, 1, sheet.getLastRow() - 1, 3).clearContent();
+      }
+      
+      sheet.getRange(2, 1, dataToInsert.length, 3).setValues(dataToInsert);
+      
+      // Styling Spreadsheet
+      sheet.autoResizeColumn(1);
+      sheet.setColumnWidth(2, 500);
+      sheet.setColumnWidth(3, 500);
+      sheet.getRange(2, 2, dataToInsert.length, 1).setHorizontalAlignment("right");
+      sheet.getRange(2, 1, dataToInsert.length, 3).setVerticalAlignment("middle").setWrap(true);
+      
+      return "✅ Berhasil! " + dataToInsert.length + " doa telah diimpor ke DB_DOA.";
+    } else {
+      throw new Error("Data tetap tidak ditemukan. Cek log untuk melihat pola.");
+    }
+
+  } catch (e) {
+    Logger.log(e.toString());
+    return "❌ Gagal: " + e.message;
+  }
+}
+
+/**
+ * Helper membersihkan string dari karakter escape
+ */
+function cleanString(str) {
+  if (!str) return "";
+  return str
+    .replace(/\\n/g, "\n")
+    .replace(/\\'/g, "'")
+    .replace(/\\"/g, '"')
+    .replace(/\\r/g, "")
+    .trim();
+}

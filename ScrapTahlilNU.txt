@@ -1,0 +1,166 @@
+/**
+ * MASTER SCRAPER TAHLIL NU ONLINE - v3.3 (Full Version)
+ * Author: Sukslan Media - Content Engine
+ * Fitur: 
+ * 1. Auto-Bonding dengan Spreadsheet aktif.
+ * 2. Robust Parsing (Mengatasi masalah view-source Next.js).
+ * 3. Smart Title Detection (Klasifikasi otomatis Surat/Doa/Tawasul).
+ * 4. ID Angka Murni & Pembersihan HTML Entities.
+ * NB : Script ini masih butuh penyesuaian pada Judul
+ */
+
+// Konfigurasi Utama
+const CONFIG = {
+  URL: "https://quran.nu.or.id/tahlil",
+  SHEET_NAME: "DB_TAHLIL"
+};
+
+/**
+ * FUNGSI UTAMA: Jalankan fungsi ini untuk memulai proses
+ */
+function runFullScrapTahlil() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(CONFIG.SHEET_NAME);
+  
+  // 1. Inisialisasi Sheet jika belum ada
+  if (!sheet) {
+    sheet = ss.insertSheet(CONFIG.SHEET_NAME);
+    sheet.appendRow(["id", "judul", "arab", "latin", "terjemah"]);
+    // Bekukan baris pertama (header)
+    sheet.setFrozenRows(1);
+    sheet.getRange("A1:E1").setFontWeight("bold").setBackground("#f3f3f3");
+  }
+
+  try {
+    // 2. Fetch Data dengan User-Agent Browser
+    const options = {
+      "muteHttpExceptions": true,
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      }
+    };
+    
+    const response = UrlFetchApp.fetch(CONFIG.URL, options);
+    const html = response.getContentText();
+    
+    // 3. Parsing Konten berdasarkan pola ID numerik di HTML
+    const sections = html.split(/id="\d+"/i);
+    let dataToInsert = [];
+    let currentId = 1;
+
+    // Mulai iterasi (Skip index 0 karena biasanya header website)
+    for (let i = 1; i < sections.length; i++) {
+      let section = sections[i];
+
+      // Ekstrak Arab (Atribut dir="rtl")
+      let arabMatch = section.match(/dir="rtl">([\s\S]*?)<\/span>/i);
+      let arab = arabMatch ? cleanText(arabMatch[1]) : "";
+
+      // Ekstrak Latin (Class primary-500/300)
+      let latinMatch = section.match(/text-primary-(?:500|300)[^>]*>([\s\S]*?)<\/span>/i);
+      let latin = latinMatch ? cleanText(latinMatch[1]) : "";
+
+      // Ekstrak Terjemah (Class neutral-700/300)
+      let terjemahMatch = section.match(/text-neutral-(?:700|300)[^>]*>([\s\S]*?)<\/span>/i);
+      let terjemah = terjemahMatch ? cleanText(terjemahMatch[1]) : "";
+
+      // Ekstrak Judul dengan Logika Deteksi Otomatis
+      let judul = detectSmartTitle(arab, terjemah, currentId);
+
+      // Validasi: Masukkan jika ada teks Arab yang valid
+      if (arab && arab.length > 10) {
+        dataToInsert.push([
+          currentId,
+          judul,
+          arab,
+          latin,
+          terjemah
+        ]);
+        currentId++;
+      }
+    }
+
+    // 4. Input ke Spreadsheet
+    if (dataToInsert.length > 0) {
+      // Menghapus data lama sebelum update (Opsional: hapus baris ini jika ingin append terus)
+      if (sheet.getLastRow() > 1) {
+        sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).clearContent();
+      }
+      
+      sheet.getRange(2, 1, dataToInsert.length, 5).setValues(dataToInsert);
+      
+      // Auto-resize kolom agar rapi
+      sheet.autoResizeColumns(1, 2);
+      sheet.setColumnWidth(3, 400); // Kolom Arab lebar
+      sheet.setColumnWidth(4, 300); // Kolom Latin
+      sheet.setColumnWidth(5, 450); // Kolom Terjemah
+      
+      return "✅ Sukses! " + dataToInsert.length + " data Tahlil berhasil diproses.";
+    } else {
+      throw new Error("Data tidak ditemukan. Struktur HTML mungkin berubah.");
+    }
+
+  } catch (e) {
+    Logger.log(e.toString());
+    return "❌ Error: " + e.message;
+  }
+}
+
+/**
+ * MESIN DETEKSI JUDUL CERDAS
+ */
+function detectSmartTitle(arab, terjemah, id) {
+  const t = terjemah.toLowerCase();
+  const a = arab;
+
+  // -- Kategori Tawasul --
+  if (t.includes("kepada yang terhormat") || t.includes("hadiah") || a.includes("إِلَى حَضْرَةِ")) {
+    if (t.includes("nabi muhammad")) return "Tawasul: Nabi Muhammad SAW";
+    if (t.includes("keluarga") || t.includes("sahabat")) return "Tawasul: Keluarga & Sahabat";
+    if (t.includes("ahli kubur")) return "Tawasul: Ahli Kubur";
+    if (t.includes("syekh abdul qadir")) return "Tawasul: Syekh Abdul Qadir Al-Jailani";
+    return "Tawasul / Kirim Fatihah";
+  }
+
+  // -- Kategori Surat Pendek --
+  if (a.includes("قُلْ هُوَ اللَّهُ أَحَدٌ")) return "Surat Al-Ikhlas";
+  if (a.includes("قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ")) return "Surat Al-Falaq";
+  if (a.includes("قُلْ أَعُوذُ بِرَبِّ النَّاسِ")) return "Surat An-Nas";
+  if (a.includes("الٓمٓ")) return "Surat Al-Baqarah: 1-5";
+  if (a.includes("وَإِلَٰهُكُمْ إِلَٰهٌ وَٰحِدٌ")) return "Ayat Kursi";
+  if (a.includes("لِلَّهِ مَا فِي السَّمَاوَاتِ")) return "Surat Al-Baqarah: 284-286";
+
+  // -- Kategori Dzikir & Kalimat Thayyibah --
+  if (a.includes("لَا إِلَهَ إِلَّا اللهُ")) return "Kalimat Tauhid (Tahlil)";
+  if (a.includes("سُبْحَانَ اللهِ") && a.includes("بِحَمْدِهِ")) return "Tasbih Khusus";
+  if (t.includes("tiada tuhan selain allah")) return "Dzikir Tahlil";
+  if (t.includes("maha suci allah")) return "Dzikir Tasbih";
+  if (t.includes("shalawat") || a.includes("صَلِّ عَلَى")) return "Shalawat Nabi";
+  if (t.includes("istighfar") || a.includes("أَسْتَغْفِرُ اللهَ")) return "Istighfar";
+
+  // -- Kategori Doa --
+  if (t.includes("ya allah") || t.includes("ampunilah") || a.includes("اللَّهُمَّ")) return "Doa Tahlil / Permohonan";
+
+  // Fallback: Jika tidak terdeteksi, ambil potongan kalimat awal terjemah
+  if (terjemah) {
+    let cleanT = terjemah.replace(/[^\w\s]/gi, '');
+    return cleanT.split(' ').slice(0, 4).join(' ') + "...";
+  }
+  
+  return "Bacaan Ke-" + id;
+}
+
+/**
+ * HELPER: Pembersih Teks & Decode HTML Entities
+ */
+function cleanText(text) {
+  if (!text) return "";
+  return text
+    .replace(/<[^>]*>?/gm, '') // Hapus tag HTML
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/&hellip;/g, '...')
+    .replace(/\s+/g, ' ') // Hapus spasi ganda/newline
+    .trim();
+}
